@@ -168,11 +168,47 @@ for arr |item, index| {
 
 ---
 
+## 模块系统对比
+
+### 与 Zig 的相似性
+
+Uya 的模块系统参考了 Zig 的设计：
+
+**Zig 示例**：
+```zig
+// Zig：使用 @import("root") 引用根模块
+const root = @import("root");
+const value = root.helper_func();
+```
+
+**Uya 示例**：
+```uya
+// Uya：使用 use main.helper_func 引用根模块
+use main.helper_func;
+
+fn example() void {
+    let value: i32 = helper_func();  // 直接使用，无需前缀
+}
+```
+
+**相似点**：
+- 都允许子包引用根模块
+- 都通过编译期检测循环依赖
+- 都要求程序员手动打破循环依赖
+
+**差异点**：
+- Uya 使用 `export` 关键字显式导出（Zig 使用 `pub`）
+- Uya 使用 `use` 关键字导入（Zig 使用 `@import`）
+- Uya 使用点号路径（`std.io`），Zig 使用字符串路径（`"std.io"`）
+- Uya 是目录级模块（每个目录一个模块），Zig 是文件级模块（每个文件一个模块）
+
+---
+
 ## 总结
 
 Uya 语言的设计理念：
 
-> **Uya 0.13 = 默认即 Rust 级内存安全 + 并发安全 + Zig 风格错误处理 + Python 风格切片 + 安全指针算术**
+> **Uya 0.13 = 默认即 Rust 级内存安全 + 并发安全 + Zig 风格错误处理 + Zig 风格模块系统 + Python 风格切片 + 安全指针算术**
 
 Uya 从多种语言中汲取灵感，但形成了自己独特的设计哲学：**程序员提供证明，编译器验证证明**。
 

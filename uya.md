@@ -10,6 +10,7 @@
 - [0.13 核心特性](#012-核心特性)
 - [设计哲学](#设计哲学)
 - [1. 文件与词法](#1-文件与词法)
+- [1.5 模块系统（v1.4）](#15-模块系统v14)
 - [2. 类型系统](#2-类型系统)
 - [3. 变量与作用域](#3-变量与作用域)
 - [4. 结构体](#4-结构体)
@@ -50,6 +51,7 @@
 - **并发安全强制**（第 15 章）：零数据竞争，通过路径零指令
 - **字符串插值**（第 23 章）：支持 `"a${x}"` 和 `"pi=${pi:.2f}"` 两种形式
 - **安全指针算术**（第 27 章）：支持 `ptr +/- offset`，必须通过编译期证明安全
+- **模块系统**（第 1.5 章）：目录级模块、显式导出、路径导入，编译期解析，零运行时开销
 
 ---
 
@@ -112,10 +114,15 @@ fn safe_access(arr: [i32; 10], i: i32) !i32 {
 ## 1 文件与词法
 
 - 文件编码 UTF-8，Unix 换行 `\n`。
+- **模块系统**：每个目录自动成为一个模块，详见[第 1.5 章](#15-模块系统v14)。
+  - 项目根目录（包含 `main` 函数的目录）是 `main` 模块
+  - 子目录路径映射到模块路径（如 `std/io/` → `std.io`）
+  - 目录下的所有 `.uya` 文件都属于同一个模块
 - 关键字保留：
   ```
   struct const var fn return extern true false if while break continue
   defer errdefer try catch error null interface impl atomic max min
+  export use
   ```
 - 标识符 `[A-Za-z_][A-Za-z0-9_]*`，区分大小写。
 - 数值字面量：
@@ -160,6 +167,301 @@ fn safe_access(arr: [i32; 10], i: i32) !i32 {
   - 元素类型必须与数组声明类型匹配（0.13 不支持类型推断）
   - 示例：`const arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];`（元素类型 `f32` 必须与数组元素类型 `f32` 完全匹配）
 - 注释 `// 到行尾` 或 `/* 块 */`（可嵌套）。
+
+---
+
+## 1.5 模块系统（v1.4）
+
+### 1.5.1 设计目标
+
+- **目录级模块系统**：每个目录自动成为一个模块
+- **显式导出机制**：使用 `export` 关键字标记可导出的项
+- **路径式导入**：使用 `use` 关键字和路径语法导入模块
+- **编译期解析，零运行时开销**：所有模块解析在编译期完成
+
+### 1.5.2 模块定义
+
+- 每个目录自动成为一个模块
+- 模块名默认为目录名
+- **模块路径基准**：模块路径相对于 **项目根目录**（包含 `main` 函数的目录）计算
+- 项目根目录是模块系统的根
+- 所有模块路径都相对于项目根目录解析
+- **根目录模块**：项目根目录本身是一个特殊模块，模块名为 `main`
+  - 项目根目录是包含 `main` 函数的目录
+  - 项目根目录下的所有 `.uya` 文件都属于 `main` 模块
+  - 使用：`use main.some_function;` 或 `use main;`
+- **子目录模块**：目录路径（相对于项目根目录）直接映射到模块路径
+  - 项目根目录下的 `std/io/` → 模块路径 `std.io`
+  - 项目根目录下的 `math/utils/` → 模块路径 `math.utils`
+  - 目录下的所有 `.uya` 文件都属于同一个模块
+- **v1.4 限制**：不支持 `mod` 关键字（块级模块），仅支持目录级模块，符合零新关键字哲学
+
+### 1.5.3 导出机制
+
+- 使用 `export` 关键字标记可导出的项
+- 语法：`export fn`, `export struct`, `export interface`, `export const`, `export error`
+- **FFI 导出**：
+  - `export extern` 用于导出 C FFI 函数：`export extern i32 printf(byte* fmt, ...);`
+  - `export extern` 用于导出 C 结构体（如果支持）：`export extern struct CStruct { ... };`
+  - **FFI 结构体类型限制**：
+    - FFI 导出的结构体字段类型必须为 C 兼容类型（`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `bool`, `byte*`）
+    - 不支持嵌套结构体、接口、错误联合类型等非 C 兼容类型
+    - 确保运行时/ABI 兼容性
+  - 导出后，其他模块可以通过 `use` 导入并使用这些 FFI 函数/结构体
+- 未标记 `export` 的项仅在模块内可见
+- **为什么使用 `export` 而不是 `pub`**：
+  - `export` 语义更明确，专门用于模块导出
+  - `pub` 通常表示"公开可见性"（public vs private），概念更通用
+  - Uya 选择 `export` 以强调模块间的导出关系，语义更清晰
+
+### 1.5.4 导入机制
+
+- 使用 `use` 关键字导入模块
+- 路径语法：`use math.utils;` 或 `use math.utils.add;`
+- 支持别名：`use math.utils as math_utils;`
+- **v1.4 限制**：不支持通配符导入（`use math.*;`），避免命名污染和可读性下降
+- **模块间引用规则**：
+  - 根目录模块（main）可以引用子目录模块：`use std.io;`
+  - 子目录模块可以引用其他子目录模块：`use std.io;`
+  - **子目录引用 main 模块的处理方式**（参考 Zig 的设计）：
+    - **允许但检测循环依赖**（推荐，类似 Zig）：
+      - 允许子目录模块引用 main 模块：`use main.helper;`
+      - 编译器在编译期检测循环依赖并报错
+      - 程序员需要手动打破循环（将共享功能提取到独立模块）
+      - 示例：如果 `main.uya` 引用 `std.io`，`std.io` 引用 `main.helper`，编译器检测到循环并报错
+- 所有模块引用都是显式的，需要通过 `use` 导入
+- **导入后的使用方式**：
+  - **导入整个模块**：`use main;` 或 `use std.io;`
+    - 使用模块中的导出项时，需要加上模块名前缀：`main.helper_func()` 或 `std.io.read_file()`
+    - 示例：
+      ```uya
+      use main;
+      use std.io;
+      
+      fn example() void {
+          main.helper_func();      // 调用 main 模块的函数
+          let file: std.io.File = std.io.open_file("test.txt");  // 使用 std.io 模块的结构体
+      }
+      ```
+  - **导入特定项**：`use main.helper_func;` 或 `use std.io.read_file;`
+    - 导入后可以直接使用，无需模块名前缀
+    - 示例：
+      ```uya
+      use main.helper_func;
+      use std.io.read_file;
+      use std.io.File;
+      
+      fn example() void {
+          helper_func();           // 直接调用，无需 main. 前缀
+          let file: File = read_file("test.txt");  // 直接使用，无需 std.io. 前缀
+      }
+      ```
+  - **导入结构体/接口**：`use std.io.File;` 或 `use std.io.IWriter;`
+    - 导入后可以直接使用类型名，无需模块名前缀
+    - 示例：
+      ```uya
+      use std.io.File;
+      use std.io.IWriter;
+      
+      fn example() void {
+          let f: File = File{ fd: 1 };  // 直接使用 File 类型
+          let w: IWriter = ...;         // 直接使用 IWriter 接口
+      }
+      ```
+  - **使用别名导入**：`use std.io as io;`
+    - 使用别名时，需要用别名作为前缀
+    - 示例：
+      ```uya
+      use std.io as io;
+      
+      fn example() void {
+          io.read_file("test.txt");     // 使用别名 io 作为前缀
+          let f: io.File = io.File{ fd: 1 };
+      }
+      ```
+  - **混合使用**：可以同时导入整个模块和特定项
+    - 示例：
+      ```uya
+      use main;                    // 导入整个 main 模块
+      use main.helper_func;       // 同时导入特定函数（可以直接使用）
+      
+      fn example() void {
+          helper_func();           // 直接使用（来自特定导入）
+          main.other_func();       // 使用模块前缀（来自整体导入）
+      }
+      ```
+
+### 1.5.5 模块路径
+
+- **路径基准**：所有模块路径相对于 **项目根目录**（包含 `main` 函数的目录）计算
+- **根目录**：特殊模块名 `main`
+  - 项目根目录是包含 `main` 函数的目录
+  - 项目根目录下的文件 → `main` 模块
+  - 示例：`use main.helper;` 或 `use main;`
+- **子目录**：目录路径（相对于项目根目录）直接映射到模块路径（目录分隔符 `/` 转换为 `.`）
+  - 项目根目录下的 `std/io/` → 模块路径 `std.io`
+  - 项目根目录下的 `math/utils/` → 模块路径 `math.utils`
+  - 使用：`use std.io;` 或 `use std.io.read_file;`
+- 使用 `.` 分隔路径段
+- **路径解析规则**：
+  - 编译器在项目根目录中查找模块
+  - 模块路径 `std.io` 对应项目根目录下的 `std/io/` 目录
+  - 所有模块引用都相对于项目根目录解析
+
+### 1.5.6 项目根目录说明
+
+- **项目根目录识别**：模块系统的根目录是包含 `fn main() i32` 函数的目录
+- **自动识别逻辑**：
+  - 编译器扫描所有源文件，找到包含 `fn main() i32` 的文件
+  - 该文件所在的最顶层目录即为项目根目录
+  - 示例：如果 `project/src/main.uya` 包含 `fn main() i32`，则 `project/src/` 是项目根目录
+- **v1.4 限制**：不支持显式指定项目根目录（如通过 `-root` 编译选项），未来版本可能支持
+- 所有模块路径都相对于项目根目录计算
+- 编译器在项目根目录中查找和解析模块
+- 项目根目录本身是 `main` 模块
+- **路径解析**：
+  - `use std.io;` 在项目根目录下查找 `std/io/` 目录
+  - `use main.helper;` 在项目根目录下查找 `helper.uya` 文件
+  - 所有模块引用都相对于项目根目录解析（绝对相对于项目根目录）
+- **多入口项目说明**：
+  - 如果项目中有多个 `fn main() i32`，编译器会报错，要求明确项目根目录
+  - 测试/工具等应作为独立的子目录模块，不包含 `main` 函数
+- **项目结构示例**：
+  ```
+  project/                 (项目根目录，包含 main 函数)
+    main.uya               (main 模块，包含 fn main() i32)
+    helper.uya             (main 模块)
+    std/
+      io/
+        file.uya           (std.io 模块)
+    math/
+      utils/
+        calc.uya           (math.utils 模块)
+  ```
+
+### 1.5.7 限制和说明
+
+- **循环依赖处理**（参考 Zig 的设计）：
+  - **允许子目录引用 main，但检测循环依赖**：
+    - 允许 `use main.xxx;` 在子目录中使用
+    - 编译器在编译期构建依赖图，检测强连通分量（循环依赖）
+    - **循环依赖是编译错误，非运行时行为**：发现循环依赖时立即编译错误，要求程序员手动打破循环
+    - 检测算法：构建有向图，使用 DFS 或 Tarjan 算法检测强连通分量
+  - **打破循环的方法**：
+    - 将共享功能提取到独立的子目录模块中（如 `common/`）
+    - 所有模块都引用 `common` 模块，而不是相互引用
+    - 示例：`main` 和 `std.io` 都引用 `common.helper`，而不是相互引用
+- **模块可见性规则**：
+  - **未 export 的项严格私有**：未标记 `export` 的项仅在模块内可见，其他模块无法访问
+  - 所有模块引用都是显式的，需要通过 `use` 导入
+- **模块初始化**：
+  - **v1.4 明确不支持模块初始化**（如 `init` 函数）
+  - 保持"零运行时开销"承诺，所有模块解析在编译期完成
+- **编译期解析规则**：
+  - 所有模块路径在编译期解析，零运行时开销
+  - 模块依赖关系在编译期构建，用于循环依赖检测
+- 与现有特性的兼容性
+- 模块路径必须相对于项目根目录（包含 main 函数的目录）
+
+### 1.5.8 完整示例
+
+#### 示例 1：基础模块定义和导出
+
+```uya
+// project/main.uya (main 模块)
+export fn helper_func() i32 {
+    return 42;
+}
+
+fn private_func() i32 {
+    return 0;  // 未 export，仅在 main 模块内可见
+}
+
+// project/std/io/file.uya (std.io 模块)
+use main.helper_func;  // 导入 main 模块的函数
+
+export struct File {
+    fd: i32
+}
+
+export fn open_file(path: byte*) !File {
+    // 使用导入的函数
+    let value: i32 = helper_func();
+    return File{ fd: 1 };
+}
+```
+
+#### 示例 2：多文件同模块
+
+```uya
+// project/std/io/file.uya (std.io 模块)
+export struct File {
+    fd: i32
+}
+
+export fn open_file(path: byte*) !File {
+    return File{ fd: 1 };
+}
+
+// project/std/io/print.uya (std.io 模块，同一模块)
+use std.io.File;  // 可以使用同模块的其他文件导出的项
+
+export fn print_file_info(f: File) void {
+    printf("File fd: %d\n", f.fd);
+}
+```
+
+#### 示例 3：FFI 导出和导入
+
+```uya
+// project/std/io/stdio.uya (std.io 模块)
+export extern i32 printf(byte* fmt, ...);
+
+// project/main.uya (main 模块)
+use std.io.printf;
+
+fn main() i32 {
+    printf("Hello from main module\n");
+    return 0;
+}
+```
+
+#### 示例 4：避免循环依赖
+
+```uya
+// project/common/helper.uya (common 模块)
+export fn helper_func() i32 {
+    return 42;
+}
+
+// project/main.uya (main 模块)
+use common.helper_func;
+use std.io;
+
+fn main() i32 {
+    let value: i32 = helper_func();
+    return 0;
+}
+
+// project/std/io/file.uya (std.io 模块)
+use common.helper_func;  // 使用 common 模块，而不是 main 模块
+
+export fn read_file() i32 {
+    return helper_func();
+}
+```
+
+#### 示例 5：使用别名导入
+
+```uya
+// project/main.uya
+use std.io as io;
+
+fn main() i32 {
+    let file: io.File = io.open_file("test.txt");
+    return 0;
+}
+```
 
 ---
 
@@ -3855,6 +4157,7 @@ fn process_range(start: &i32, end: &i32) void {
 
 ### 28.5 已实现特性（0.13 版本）
 以下特性已在 0.13 版本中实现，详见对应章节：
+- ✅ **模块系统**（v1.4）：第 1.5 章 - 模块系统（v1.4）
 - ✅ **泛型**：第 24 章 - Uya 0.13 泛型增量文档
 - ✅ **显式宏**：第 25 章 - Uya 0.13 显式宏（可选增量）
 - ✅ **类型别名**：第 24 章 6.2 节 - 类型别名实现
