@@ -1,0 +1,16 @@
+// 更复杂的测试用例
+struct Point {
+    x: i32,
+    y: i32
+}
+
+fn add(a: i32, b: i32) i32 {
+    return a + b;
+}
+
+fn main() i32 {
+    let x: i32 = 5;
+    let y: i32 = 10;
+    let sum: i32 = add(x, y);
+    return sum;
+}
