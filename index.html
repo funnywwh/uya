@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uya 语言 - AI友好 · 默认 Rust 级安全 · 零 GC · 零 lifetime 符号 · 通过路径零指令 · 单页纸可读完</title>
+    <title>Uya 语言 - AI友好 · 默认高级安全 · 零 GC · 零 lifetime 符号 · 通过路径零指令 · 单页纸可读完</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
@@ -720,7 +720,7 @@
                 
                 <div class="core-features">
                     <div class="feature-tag ai-friendly"><i class="fas fa-robot"></i> AI友好</div>
-                    <div class="feature-tag"><i class="fas fa-shield-alt"></i> Rust级内存安全</div>
+                    <div class="feature-tag"><i class="fas fa-shield-alt"></i> 高级内存安全</div>
                     <div class="feature-tag zero-gc"><i class="fas fa-recycle"></i> 零GC</div>
                     <div class="feature-tag zero-lifetime"><i class="fas fa-times-circle"></i> 零lifetime符号</div>
                     <div class="feature-tag"><i class="fas fa-bolt"></i> 路径零指令</div>
@@ -1250,7 +1250,7 @@ fn main() i32 {
 }</code></pre>
                     </div>
                     
-                    <h3>Zig风格的for循环</h3>
+                    <h3>for循环迭代</h3>
                     <div class="code-block">
                         <div class="code-header">
                             <span>示例：数组迭代</span>
@@ -1277,7 +1277,7 @@ fn main() i32 {
 }</code></pre>
                     </div>
 
-                    <h3>切片语法（类似Python）</h3>
+                    <h3>切片语法</h3>
                     <div class="code-block">
                         <div class="code-header">
                             <span>示例：数组切片操作</span>
@@ -1462,7 +1462,7 @@ fn safe_ptr_arith(arr: [i32; 10], offset: i32) !&i32 {
                 <section id="summary" class="content-section">
                     <div class="philosophy-card" style="background: linear-gradient(135deg, #e0f2fe, #f0f9ff);">
                         <h3 style="color: var(--primary);">一句话总结</h3>
-                        <p><strong>Uya 0.13 = AI友好 · 默认即 Rust 级内存安全 + 并发安全 + Zig 风格错误处理</strong>；<br>
+                        <p><strong>Uya 0.13 = AI友好 · 默认即高级内存安全 + 并发安全 + 显式错误处理</strong>；<br>
                         <strong>只加 1 个关键字 <code>atomic T</code>，零 lifetime 符号，零 GC</strong>；<br>
                         <strong>所有 UB 必须被编译期证明为安全 → 失败即编译错误</strong>；<br>
                         <strong>通过路径零指令，失败路径不存在，不降级、不插运行时锁。</strong></p>
@@ -1478,7 +1478,7 @@ fn safe_ptr_arith(arr: [i32; 10], offset: i32) !&i32 {
             <div class="footer-content">
                 <div class="footer-section">
                     <h3>Uya 语言</h3>
-                    <p>AI友好 · 默认 Rust 级安全 · 零 GC · 零 lifetime 符号 · 通过路径零指令 · 单页纸可读完</p>
+                    <p>AI友好 · 默认高级安全 · 零 GC · 零 lifetime 符号 · 通过路径零指令 · 单页纸可读完</p>
                 </div>
                 
                 <div class="footer-section">
