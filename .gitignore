@@ -1,7 +1,5 @@
 compiler/uyac
-compiler/*.o
-compiler/*/*.o
-compiler/*/*/*.o
+compiler/**/*.o
 compiler/*.a
 compiler/*.so
 compiler/*.dll
@@ -20,3 +18,4 @@ compiler/*/*.so
 compiler/*/*.dll
 compiler/*/*.dylib
 compiler/output.c
+compiler/output_complex.c
