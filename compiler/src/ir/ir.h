@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// 前向声明ASTNode，避免循环依赖
+struct ASTNode;
+typedef struct ASTNode ASTNode;
+
 // IR 指令类型
 typedef enum {
     IR_FUNC_DECL,      // 函数声明
@@ -205,7 +209,7 @@ void irinst_free(IRInst *inst);
 void ir_print(IRInst *inst, int indent);
 
 // IR 生成器函数
-void *irgenerator_generate(IRGenerator *ir_gen, struct ASTNode *ast);
+void *irgenerator_generate(IRGenerator *ir_gen, ASTNode *ast);
 void ir_free(void *ir);
 
 #endif

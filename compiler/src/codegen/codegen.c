@@ -62,14 +62,14 @@ static void codegen_write_value(CodeGenerator *codegen, IRInst *inst) {
     
     switch (inst->type) {
         case IR_VAR_DECL:
-            fprintf(codegen->output_file, "%s", inst->data.var.name);
+            if (inst->data.var.name) {
+                fprintf(codegen->output_file, "%s", inst->data.var.name);
+            } else {
+                fprintf(codegen->output_file, "temp_%d", inst->id);
+            }
             break;
         case IR_ASSIGN:
             fprintf(codegen->output_file, "%s", inst->data.assign.dest);
-            break;
-        case IR_NUMBER:
-            // 这里需要特殊处理，因为NUMBER不是IR指令类型
-            fprintf(codegen->output_file, "0");  // 临时
             break;
         default:
             fprintf(codegen->output_file, "temp_%d", inst->id);
