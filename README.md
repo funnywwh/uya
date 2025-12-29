@@ -18,7 +18,7 @@
 - **并发安全强制**：零数据竞争，通过路径零指令
 - **字符串插值**：支持 `"a${x}"` 和 `"pi=${pi:.2f}"` 两种形式
 - **灵活错误处理**：支持预定义错误和运行时错误（类似 Zig 语法，无需预定义）
-- **切片语法**：支持类似 Python 的切片语法 `slice(arr, start, end)`，包括负数索引
+- **切片语法**：支持类似 Python 的切片语法 `slice(arr, start, len)`，包括负数索引
 - **安全指针算术**：支持 `ptr +/- offset` 操作，必须通过编译期证明安全
 
 ### 设计亮点
@@ -95,16 +95,18 @@ mc twice(n: i32) expr { n + n }
 fn slice_example() void {
   let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-  // 基本切片：slice(arr, start, end) 返回从索引start到end-1的元素
-  let slice1: [i32; 3] = slice(arr, 2, 5);  // [2, 3, 4]
+  // 基本切片：slice(arr, start, len) 返回从索引start开始，长度为len的元素
+  let slice1: [i32; 3] = slice(arr, 2, 3);  // [2, 3, 4]
 
-  // 支持负数索引：-1表示最后一个元素，-2表示倒数第二个元素
-  let slice2: [i32; 3] = slice(arr, -3, 10);  // [7, 8, 9]，从倒数第3个到末尾
+  // start 支持负数索引：-1表示最后一个元素，-2表示倒数第二个元素，以此类推
+  // 负数索引从数组末尾开始计算：-n 转换为 len(arr) - n
+  let slice2: [i32; 3] = slice(arr, -3, 3);  // [7, 8, 9]，从倒数第3个开始，长度为3
+  let slice2b: [i32; 1] = slice(arr, -1, 1);  // [9]，从最后一个元素开始，长度为1
 
-  // 从某个索引到末尾
-  let slice3: [i32; 3] = slice(arr, 7, 10);   // [7, 8, 9]
+  // 从某个索引开始
+  let slice3: [i32; 3] = slice(arr, 7, 3);   // [7, 8, 9]
 
-  // 从开头到某个索引
+  // 从开头开始
   let slice4: [i32; 3] = slice(arr, 0, 3);    // [0, 1, 2]
 }
 
@@ -235,7 +237,7 @@ fn increment(counter: *Counter) void {
 
 完整的语言规范请参阅：
 - **[uya.md](./uya.md)** - Markdown 格式的完整语言规范
-- **[uya.html](./uya.html)** - HTML 格式（深色主题）的完整语言规范，适合在线浏览和打印
+- **[index.html](./index.html)** - HTML 格式（深色主题）的完整语言规范，适合在线浏览和打印
 
 文档包含：
 - 完整的语法规范
@@ -272,7 +274,7 @@ Copyright (c) 2025 zigger
 ## 相关链接
 
 - [语言规范文档（Markdown）](./uya.md)
-- [语言规范文档（HTML，深色主题）](./uya.html)
+- [语言规范文档（HTML，深色主题）](./index.html)
 - [许可证](./LICENSE)
 
 ---
